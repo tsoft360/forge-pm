@@ -1,7 +1,40 @@
-use anyhow::Result;
 use serde::Deserialize;
-use std::path::Path;
-use std::fs;
+use anyhow::{Context, Result};
+use futures_util::StreamExt;
+use indicatif::{ProgressBar, ProgressStyle};
+use clap::{Parser, Subcommand};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
+use tokio::{
+    fs::File,
+    io::AsyncWriteExt,
+};
+
+#[derive(Parser)]
+#[command(name = "forge-pm", version, about = "A packet manager for forge-desktop")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Update {
+        #[arg(short, long, default_value = "forge.tar.bz2")]
+        output: PathBuf,
+        #[arg(long)]
+        check: bool,
+    },
+
+    Install {
+        #[arg(short, long)]
+        directory: Option<PathBuf>,
+    },
+
+    CheckVersion,
+} 
 
 #[derive(Deserialize)]
 struct Release {
@@ -16,25 +49,55 @@ struct Asset {
 }
 
 
-async fn download_file(
-    url: &str,
-    output: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let response = reqwest::Client::new()
+async fn download_file(url: &str, output: &Path) -> Result<()> {
+    let client = reqwest::Client::builder()
+        .user_agent("forge-pm")
+        .build()?;
+
+    let response = client
         .get(url)
-        .header("User-Agent", "forge-pm")
         .send()
         .await?
         .error_for_status()?;
 
-    let bytes = response.bytes().await?;
+    let total_size = response.content_length();
 
-    fs::write(output, &bytes);
+    let progress = match total_size {
+        Some(size) => ProgressBar::new(size),
+        None => ProgressBar::new_spinner(),
+    };
 
-    println!("Downloaded {} bytes to {:?}", bytes.len(), output);
+    progress.set_style(
+        ProgressStyle::with_template(
+            "{spinner:.green} [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, ETA {eta})"
+        )?
+        .progress_chars("=>-"),
+    );
+
+    progress.enable_steady_tick(Duration::from_millis(100));
+
+    let mut file = File::create(output)
+        .await
+        .with_context(|| format!("Cannot create {}", output.display()))?;
+
+    let mut stream = response.bytes_stream();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        file.write_all(&chunk).await?;
+        progress.inc(chunk.len() as u64);
+    }
+
+    file.flush().await?;
+    progress.finish_with_message("Download complete");
 
     Ok(())
 }
+
+async fn install_in_dir(file: &Path, output: &Path) -> Result<()> {
+    Ok(())
+}
+
 
 async fn update() -> Result<()> {
     // let url = "https://api.github.com/repos/Card-Forge/forge/releases/latest";
@@ -57,8 +120,34 @@ async fn update() -> Result<()> {
     Ok(())
 }
 
+async fn check_version() -> Result<()> {
+    Ok()
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    update().await?;
-    Ok(())
+    let cli = Cli::parse();
+    
+    match cli.command {
+        Commands::Update { output, check } => {
+            println!("Updating Forge...");
+            println!("Output: {}", output.display());
+            println!("Check only: {check}");
+            update().await;
+            Ok(())
+        }
+
+        Commands::Install { directory } => {
+            let directory = directory.unwrap_or_else(|| {
+                PathBuf::from("./forge.tar.bz2")
+            });
+
+            println!("Installing Forge to {}", directory.display());
+            Ok(())
+        }
+
+        Commands::CheckVersion => {
+            Ok(())
+        }
+    }
 }
