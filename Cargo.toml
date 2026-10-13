@@ -1,0 +1,10 @@
+[package]
+name = "forge-pm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.104"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+serde_json = "1.0.152"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
