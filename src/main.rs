@@ -1,44 +1,57 @@
 use anyhow::Result;
+use serde::Deserialize;
+use std::path::Path;
+use std::fs;
 
-fn version() {
-
+#[derive(Deserialize)]
+struct Release {
+    tag_name: String,
+    assets: Vec<Asset>,
 }
 
-fn install() {
-
+#[derive(Deserialize)]
+struct Asset {
+    name: String,
+    browser_download_url: String,
 }
 
-fn check_for_updates() {
 
-}
-
-
-async fn update() -> Result<()> {
-    let url = "https://api.github.com/repos/Card-Forge/forge/releases/latest";
-
-    let client = reqwest::Client::builder()
-        .user_agent("forge-pm")
-        .build()?;
-
-    let response = client
+async fn download_file(
+    url: &str,
+    output: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let response = reqwest::Client::new()
         .get(url)
+        .header("User-Agent", "forge-pm")
         .send()
         .await?
         .error_for_status()?;
 
-    let release: serde_json::Value = response.json().await?;
+    let bytes = response.bytes().await?;
 
-    println!("Release: {}", release["name"]);
-    println!("Published: {}", release["published_at"]);
+    fs::write(output, &bytes);
 
-    for asset in release["assets"].as_array().into_iter().flatten() {
-        println!(
-            "{} - {}",
-            asset["name"].as_str().unwrap_or("unknown"),
-            asset["browser_download_url"]
-                .as_str()
-                .unwrap_or("no URL")
-        );
+    println!("Downloaded {} bytes to {:?}", bytes.len(), output);
+
+    Ok(())
+}
+
+async fn update() -> Result<()> {
+    // let url = "https://api.github.com/repos/Card-Forge/forge/releases/latest";
+
+    let release: Release = reqwest::Client::new()
+        .get("https://api.github.com/repos/Card-Forge/forge/releases/latest")
+        .header("User-Agent", "forge-pm")
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+
+    for asset in release.assets {
+        if asset.name == "forge-installer-2.0.15.tar.bz2" {
+            download_file(&asset.browser_download_url.to_string(), Path::new("forge.tar.bz2")).await;
+        }
     }
 
     Ok(())
