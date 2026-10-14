@@ -51,13 +51,17 @@ struct Asset {
     browser_download_url: String,
 }
 
-fn extract_tar_bz2(
-    path: &str,
-) {
-    Command::new("mkdir").arg("forge").spawn();
-    Command::new("tar")
-        .args(["-xf", path, "-C", "forge"])
-        .spawn();
+fn extract_tar_bz2(path: &str) {
+    let p = Path::new("forge.tar.bz2");
+    if p.exists() {
+        let p = Path::new("forge.tar.bz2");
+        if !p.exists() {
+            Command::new("mkdir").arg("forge").spawn();
+        }
+        Command::new("tar")
+            .args(["-xf", path, "-C", "forge"])
+            .spawn();
+    }
 }
 
 async fn download_file(url: &str, output: &Path) -> Result<()> {
@@ -118,6 +122,7 @@ async fn download() -> Result<()> {
         .json()
         .await?;
 
+    Command::new("rm").arg("forge.tar.bz2").spawn(); 
     for asset in release.assets {
         if asset.name == "forge-installer-2.0.15.tar.bz2" {
             download_file(&asset.browser_download_url.to_string(), Path::new("forge.tar.bz2")).await;
@@ -139,7 +144,7 @@ async fn main() -> Result<()> {
         Commands::Update { output, check } => {
             println!("Updating Forge...");
             println!("Output: {}", output.display());
-            println!("Check only: {check}");
+            println!("Check if file exists: {check}");
             download().await;
             extract_tar_bz2("forge.tar.bz2");
             Ok(())
