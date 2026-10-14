@@ -7,6 +7,8 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
+use bzip2::read::BzDecoder;
+use tar::Archive;
 use tokio::{
     fs::File,
     io::AsyncWriteExt,
@@ -48,6 +50,12 @@ struct Asset {
     browser_download_url: String,
 }
 
+fn extract_tar_bz2(
+    path: &str,
+    output: &str,
+) -> io::Result<()> {
+    
+}
 
 async fn download_file(url: &str, output: &Path) -> Result<()> {
     let client = reqwest::Client::builder()
@@ -94,12 +102,17 @@ async fn download_file(url: &str, output: &Path) -> Result<()> {
     Ok(())
 }
 
-async fn install_in_dir(file: &Path, output: &Path) -> Result<()> {
+async fn install_in_dir(file: &PathBuf, output: &Path) -> Result<()> {
+    let path = file;
+    let tar_bz2 = File::open(path).await?;
+    let decoder = BzDecoder::new(tar_bz2);
+    let mut archive = Archive::new(decoder);
+    archive.unpack(output)?;
     Ok(())
 }
 
 
-async fn update() -> Result<()> {
+async fn download() -> Result<()> {
     // let url = "https://api.github.com/repos/Card-Forge/forge/releases/latest";
 
     let release: Release = reqwest::Client::new()
@@ -121,7 +134,7 @@ async fn update() -> Result<()> {
 }
 
 async fn check_version() -> Result<()> {
-    Ok()
+    Ok(())
 }
 
 #[tokio::main]
@@ -133,7 +146,8 @@ async fn main() -> Result<()> {
             println!("Updating Forge...");
             println!("Output: {}", output.display());
             println!("Check only: {check}");
-            update().await;
+            download().await;
+            install_in_dir(&output, Path::new(".")).await;
             Ok(())
         }
 
