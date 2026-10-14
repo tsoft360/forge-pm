@@ -6,7 +6,7 @@ use clap::{Parser, Subcommand};
 use std::{
     path::{Path, PathBuf},
     time::Duration,
-    io,
+    process::Command,
 };
 use bzip2::read::BzDecoder;
 use tar::Archive;
@@ -53,12 +53,11 @@ struct Asset {
 
 fn extract_tar_bz2(
     path: &str,
-    output: &str,
-) -> io::Result<()> {
-    let file = File::open(path);
-    let decoder = BzDecoder::new(file);
-    let mut archive = Archive::new(decoder);
-    archive.unpack(output)?;
+) {
+    Command::new("mkdir").arg("forge").spawn();
+    Command::new("tar")
+        .args(["-xf", path, "-C", "forge"])
+        .spawn();
 }
 
 async fn download_file(url: &str, output: &Path) -> Result<()> {
@@ -106,11 +105,6 @@ async fn download_file(url: &str, output: &Path) -> Result<()> {
     Ok(())
 }
 
-async fn install_in_dir(file: &str, output: &str) -> Result<()> {
-    extract_tar_bz2(file, output);
-    Ok(())
-}
-
 
 async fn download() -> Result<()> {
     // let url = "https://api.github.com/repos/Card-Forge/forge/releases/latest";
@@ -147,7 +141,7 @@ async fn main() -> Result<()> {
             println!("Output: {}", output.display());
             println!("Check only: {check}");
             download().await;
-            install_in_dir(&output.display().to_string(), "./forge/").await;
+            extract_tar_bz2("forge.tar.bz2");
             Ok(())
         }
 
