@@ -6,6 +6,7 @@ use clap::{Parser, Subcommand};
 use std::{
     path::{Path, PathBuf},
     time::Duration,
+    io,
 };
 use bzip2::read::BzDecoder;
 use tar::Archive;
@@ -54,7 +55,10 @@ fn extract_tar_bz2(
     path: &str,
     output: &str,
 ) -> io::Result<()> {
-    
+    let file = File::open(path);
+    let decoder = BzDecoder::new(file);
+    let mut archive = Archive::new(decoder);
+    archive.unpack(output)?;
 }
 
 async fn download_file(url: &str, output: &Path) -> Result<()> {
@@ -102,12 +106,8 @@ async fn download_file(url: &str, output: &Path) -> Result<()> {
     Ok(())
 }
 
-async fn install_in_dir(file: &PathBuf, output: &Path) -> Result<()> {
-    let path = file;
-    let tar_bz2 = File::open(path).await?;
-    let decoder = BzDecoder::new(tar_bz2);
-    let mut archive = Archive::new(decoder);
-    archive.unpack(output)?;
+async fn install_in_dir(file: &str, output: &str) -> Result<()> {
+    extract_tar_bz2(file, output);
     Ok(())
 }
 
@@ -147,7 +147,7 @@ async fn main() -> Result<()> {
             println!("Output: {}", output.display());
             println!("Check only: {check}");
             download().await;
-            install_in_dir(&output, Path::new(".")).await;
+            install_in_dir(&output.display().to_string(), "./forge/").await;
             Ok(())
         }
 
