@@ -52,9 +52,11 @@ struct Asset {
 }
 
 async fn extract_tar_bz2(path: &str) -> Result<()> {
-    let p = Path::new("/home/dragon/forge");
+    let home = dirs::home_dir().expect("could not find home dir!");
+    let home = home.display();
+    let p = Path::new("{home}/forge");
     if !p.exists() {
-        Command::new("mkdir").arg("/home/dragon/forge").spawn();
+        Command::new("mkdir").arg("{home}/forge").spawn();
     }
     let progress = ProgressBar::new_spinner();
     progress.set_style(
@@ -62,7 +64,7 @@ async fn extract_tar_bz2(path: &str) -> Result<()> {
     );
     progress.enable_steady_tick(Duration::from_millis(100));
     Command::new("tar")
-        .args(["-xf", path, "-C", "/home/dragon/forge"])
+        .args(["-xf", path, "-C", "{home}/forge"])
         .spawn()?
         .wait();
     
