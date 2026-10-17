@@ -36,7 +36,7 @@ enum Commands {
         directory: Option<PathBuf>,
     },
 
-    CheckVersion,
+    Unpack,
 } 
 
 #[derive(Deserialize)]
@@ -51,17 +51,22 @@ struct Asset {
     browser_download_url: String,
 }
 
-fn extract_tar_bz2(path: &str) {
-    let p = Path::new("forge.tar.bz2");
-    if p.exists() {
-        let p = Path::new("forge.tar.bz2");
-        if !p.exists() {
-            Command::new("mkdir").arg("forge").spawn();
-        }
-        Command::new("tar")
-            .args(["-xf", path, "-C", "forge"])
-            .spawn();
+async fn extract_tar_bz2(path: &str) -> Result<()> {
+    let p = Path::new("/home/dragon/forge");
+    if !p.exists() {
+        Command::new("mkdir").arg("/home/dragon/forge").spawn();
     }
+    let progress = ProgressBar::new_spinner();
+    progress.set_style(
+        ProgressStyle::with_template("{spinner:.green} {msg} unpacking forge")?
+    );
+    progress.enable_steady_tick(Duration::from_millis(100));
+    Command::new("tar")
+        .args(["-xf", path, "-C", "/home/dragon/forge"])
+        .spawn()?
+        .wait();
+    
+    Ok(())
 }
 
 async fn download_file(url: &str, output: &Path) -> Result<()> {
@@ -124,7 +129,7 @@ async fn download() -> Result<()> {
 
     Command::new("rm").arg("forge.tar.bz2").spawn(); 
     for asset in release.assets {
-        if asset.name == "forge-installer-2.0.15.tar.bz2" {
+        if asset.name.starts_with("forge-installer") && asset.name.ends_with(".tar.bz2") {
             download_file(&asset.browser_download_url.to_string(), Path::new("forge.tar.bz2")).await;
         }
     }
@@ -146,7 +151,7 @@ async fn main() -> Result<()> {
             println!("Output: {}", output.display());
             println!("Check if file exists: {check}");
             download().await;
-            extract_tar_bz2("forge.tar.bz2");
+            extract_tar_bz2("forge.tar.bz2").await;
             Ok(())
         }
 
@@ -159,7 +164,8 @@ async fn main() -> Result<()> {
             Ok(())
         }
 
-        Commands::CheckVersion => {
+        Commands::Unpack => {
+            extract_tar_bz2("forge.tar.bz2").await;
             Ok(())
         }
     }
