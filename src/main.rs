@@ -58,7 +58,7 @@ async fn extract_tar_bz2(path: &str) -> Result<()> {
     }
     let progress = ProgressBar::new_spinner();
     progress.set_style(
-        ProgressStyle::with_template("{spinner:.green} {msg} unpacking forge")?
+        ProgressStyle::with_template("{spinner:.green} installing forge")?
     );
     progress.enable_steady_tick(Duration::from_millis(100));
     Command::new("tar")
