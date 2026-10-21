@@ -133,7 +133,10 @@ async fn download() -> Result<()> {
         .json()
         .await?;
 
-    Command::new("rm").arg("forge.tar.bz2").spawn(); 
+    let p = PathBuf::from("forge.tar.bz2");
+    if p.exists() {
+        Command::new("rm").arg("forge.tar.bz2").spawn(); 
+    }
     for asset in release.assets {
         if asset.name.starts_with("forge-installer") && asset.name.ends_with(".tar.bz2") {
             download_file(&asset.browser_download_url.to_string(), Path::new("forge.tar.bz2")).await;
