@@ -72,6 +72,7 @@ async fn extract_tar_bz2(path: &str) -> Result<()> {
         .spawn()?
         .wait();
     
+    Command::new("rm").arg(path).spawn()?.wait();
     Ok(())
 }
 
