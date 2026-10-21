@@ -7,9 +7,9 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
     process::Command,
+    fs,
 };
 use bzip2::read::BzDecoder;
-use tar::Archive;
 use tokio::{
     fs::File,
     io::AsyncWriteExt,
@@ -37,6 +37,8 @@ enum Commands {
     },
 
     Unpack,
+
+    List,
 } 
 
 #[derive(Deserialize)]
@@ -53,10 +55,12 @@ struct Asset {
 
 async fn extract_tar_bz2(path: &str) -> Result<()> {
     let home = dirs::home_dir().expect("could not find home dir!");
-    let home = home.display();
-    let p = Path::new("{home}/forge");
-    if !p.exists() {
-        Command::new("mkdir").arg("{home}/forge").spawn();
+    let forge_dir = PathBuf::from(home).join("forge");
+    if !forge_dir.exists() {
+        match fs::create_dir_all(&forge_dir) {
+            Ok(()) => println!("Created forge dir"),
+            Err(e) => eprintln!("Failed to create forge dir: {}", e),
+        }
     }
     let progress = ProgressBar::new_spinner();
     progress.set_style(
@@ -64,7 +68,7 @@ async fn extract_tar_bz2(path: &str) -> Result<()> {
     );
     progress.enable_steady_tick(Duration::from_millis(100));
     Command::new("tar")
-        .args(["-xf", path, "-C", "{home}/forge"])
+        .args(["-xf", path, "-C", forge_dir.to_str().expect("home/forge is not a valid string or path!")])
         .spawn()?
         .wait();
     
@@ -139,7 +143,23 @@ async fn download() -> Result<()> {
     Ok(())
 }
 
-async fn check_version() -> Result<()> {
+async fn list() -> Result<()> {
+     let release: Release = reqwest::Client::new()
+        .get("https://api.github.com/repos/Card-Forge/forge/releases/latest")
+        .header("User-Agent", "forge-pm")
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+
+    Command::new("rm").arg("forge.tar.bz2").spawn(); 
+    for asset in release.assets {
+        if asset.name.starts_with("forge-installer") && asset.name.ends_with(".tar.bz2") {
+            println!("{}", asset.name);
+        }
+    }
+
     Ok(())
 }
 
@@ -168,6 +188,11 @@ async fn main() -> Result<()> {
 
         Commands::Unpack => {
             extract_tar_bz2("forge.tar.bz2").await;
+            Ok(())
+        }
+
+        Commands::List => {
+            list().await;
             Ok(())
         }
     }
