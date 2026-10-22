@@ -59,9 +59,8 @@ async fn extract_tar_bz2(path: &str) -> Result<()> {
         .spawn()?
         .wait();
     
-    println!("done");
-    
     Command::new("rm").arg(path).spawn()?.wait();
+    progress.finish_with_message("done\n");
     Ok(())
 }
 
@@ -105,7 +104,7 @@ async fn download_file(url: &str, output: &Path) -> Result<()> {
     }
 
     file.flush().await?;
-    progress.finish_with_message("Download complete");
+    progress.finish_with_message("Download complete\n");
 
     Ok(())
 }
@@ -160,7 +159,7 @@ async fn main() -> Result<()> {
     
     match cli.command {
         Commands::Update => {
-            println!("Updating Forge...");
+            println!("Downloading Forge...");
             download().await;
             extract_tar_bz2("forge.tar.bz2").await;
             Ok(())
