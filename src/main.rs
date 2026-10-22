@@ -16,7 +16,7 @@ use tokio::{
 };
 
 #[derive(Parser)]
-#[command(name = "forge-pm", version, about = "A packet manager for forge-desktop")]
+#[command(name = "forge-pm", version, about = "A packet manager for mtg card engine forge-desktop")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -24,20 +24,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Update {
-        #[arg(short, long, default_value = "forge.tar.bz2")]
-        output: PathBuf,
-        #[arg(long)]
-        check: bool,
-    },
-
-    Install {
-        #[arg(short, long)]
-        directory: Option<PathBuf>,
-    },
-
-    Unpack,
-
+    Update,
     List,
 } 
 
@@ -71,6 +58,8 @@ async fn extract_tar_bz2(path: &str) -> Result<()> {
         .args(["-xf", path, "-C", forge_dir.to_str().expect("home/forge is not a valid string or path!")])
         .spawn()?
         .wait();
+    
+    println!("done");
     
     Command::new("rm").arg(path).spawn()?.wait();
     Ok(())
@@ -170,25 +159,9 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     
     match cli.command {
-        Commands::Update { output, check } => {
+        Commands::Update => {
             println!("Updating Forge...");
-            println!("Output: {}", output.display());
-            println!("Check if file exists: {check}");
             download().await;
-            extract_tar_bz2("forge.tar.bz2").await;
-            Ok(())
-        }
-
-        Commands::Install { directory } => {
-            let directory = directory.unwrap_or_else(|| {
-                PathBuf::from("./forge.tar.bz2")
-            });
-
-            println!("Installing Forge to {}", directory.display());
-            Ok(())
-        }
-
-        Commands::Unpack => {
             extract_tar_bz2("forge.tar.bz2").await;
             Ok(())
         }
