@@ -156,8 +156,6 @@ async fn list() -> Result<()> {
         .error_for_status()?
         .json()
         .await?;
-
-    Command::new("rm").arg("forge.tar.bz2").spawn(); 
     for asset in release.assets {
         if asset.name.starts_with("forge-installer") && asset.name.ends_with(".tar.bz2") {
             println!("{}", asset.name);
