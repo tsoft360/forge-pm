@@ -1,7 +1,7 @@
 # Maintainer: Your Name <your-email@example.com>
 
 pkgname=forge-pm
-pkgver=1.1.3
+pkgver=1.1.4
 pkgrel=1
 pkgdesc="A Rust-based updater for Forge Desktop"
 arch=('x86_64')
