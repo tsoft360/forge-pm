@@ -1,4 +1,4 @@
-# Maintainer: Your Name <your-email@example.com>
+# Maintainer: Thijs Boelens thijsboelens2@gmail.com
 
 pkgname=forge-pm
 pkgver=1.1.4
